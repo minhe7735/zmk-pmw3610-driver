@@ -10,11 +10,11 @@ properties:
     type: phandle-array
     required: true
   scroll-layers:
-    type: array
-    default: []
+    type: int
+    default: -3
   snipe-layers:
-    type: array
-    default: []
+    type: int
+    default: -2
   automouse-layer:
     type: int
     default: -1
