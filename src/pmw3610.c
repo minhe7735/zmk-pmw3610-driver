@@ -563,19 +563,15 @@ static void deactivate_automouse_layer(struct k_timer *timer) {
 K_TIMER_DEFINE(automouse_layer_timer, deactivate_automouse_layer, NULL);
 #endif
 
-static enum pixart_input_mode get_input_mode_for_current_layer(const struct device *dev) {
-    const struct pixart_config *config = dev->config;
+static enum pixart_input_mode get_input_mode_for_current_layer() {
     uint8_t curr_layer = zmk_keymap_highest_layer_active();
-    for (size_t i = 0; i < config->scroll_layers_len; i++) {
-        if (curr_layer == config->scroll_layers[i]) {
+    if (curr_layer == SCROLL_LAYER) {
             return SCROLL;
         }
-    }
-    for (size_t i = 0; i < config->snipe_layers_len; i++) {
-        if (curr_layer == config->snipe_layers[i]) {
+    if (curr_layer == SNIPE_LAYER) {
             return SNIPE;
         }
-    }
+
     return MOVE;
 }
 
@@ -589,7 +585,7 @@ static int pmw3610_report_data(const struct device *dev) {
     }
 
     int32_t dividor;
-    enum pixart_input_mode input_mode = get_input_mode_for_current_layer(dev);
+    enum pixart_input_mode input_mode = get_input_mode_for_current_layer();
     bool input_mode_changed = data->curr_mode != input_mode;
     switch (input_mode) {
     case MOVE:
@@ -814,9 +810,7 @@ static int pmw3610_init(const struct device *dev) {
 }
 
 #define PMW3610_DEFINE(n)                                                                          \
-    static struct pixart_data data##n;                                                             \
-    static int32_t scroll_layers##n[] = DT_PROP(DT_DRV_INST(n), scroll_layers);                    \
-    static int32_t snipe_layers##n[] = DT_PROP(DT_DRV_INST(n), snipe_layers);                      \
+    static struct pixart_data data##n;                                                             \                     \
     static const struct pixart_config config##n = {                                                \
         .irq_gpio = GPIO_DT_SPEC_INST_GET(n, irq_gpios),                                           \
         .bus =                                                                                     \
@@ -830,11 +824,7 @@ static int pmw3610_init(const struct device *dev) {
                         .slave = DT_INST_REG_ADDR(n),                                              \
                     },                                                                             \
             },                                                                                     \
-        .cs_gpio = SPI_CS_GPIOS_DT_SPEC_GET(DT_DRV_INST(n)),                                       \
-        .scroll_layers = scroll_layers##n,                                                         \
-        .scroll_layers_len = DT_PROP_LEN(DT_DRV_INST(n), scroll_layers),                           \
-        .snipe_layers = snipe_layers##n,                                                           \
-        .snipe_layers_len = DT_PROP_LEN(DT_DRV_INST(n), snipe_layers),                             \
+        .cs_gpio = SPI_CS_GPIOS_DT_SPEC_GET(DT_DRV_INST(n)),                                       \                          \
     };                                                                                             \
                                                                                                    \
     DEVICE_DT_INST_DEFINE(n, pmw3610_init, NULL, &data##n, &config##n, POST_KERNEL,                \
