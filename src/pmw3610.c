@@ -543,6 +543,8 @@ static void pmw3610_async_init(struct k_work *work) {
 }
 
 #define AUTOMOUSE_LAYER (DT_PROP(DT_DRV_INST(0), automouse_layer))
+#define SCROLL_LAYER (DT_PROP(DT_DRV_INST(0), scroll_layers))
+#define SNIPE_LAYER (DT_PROP(DT_DRV_INST(0), snipe_layers))
 #if AUTOMOUSE_LAYER > 0
 struct k_timer automouse_layer_timer;
 static bool automouse_triggered = false;
@@ -613,7 +615,7 @@ static int pmw3610_report_data(const struct device *dev) {
     data->curr_mode = input_mode;
 
 #if AUTOMOUSE_LAYER > 0
-    if (input_mode == MOVE && zmk_keymap_highest_layer_active() != config->snipe_layers[0] && zmk_keymap_highest_layer_active() != config->scroll_layers[0]
+    if (input_mode == MOVE && zmk_keymap_highest_layer_active() != SNIPE_LAYER && zmk_keymap_highest_layer_active() != SCROLL_LAYER
             (automouse_triggered || zmk_keymap_highest_layer_active() != AUTOMOUSE_LAYER)
     ) {
         activate_automouse_layer();
