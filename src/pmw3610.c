@@ -543,8 +543,6 @@ static void pmw3610_async_init(struct k_work *work) {
 }
 
 #define AUTOMOUSE_LAYER (DT_PROP(DT_DRV_INST(0), automouse_layer))
-#define SCROLL_LAYER (DT_PROP(DT_DRV_INST(0), scroll_layers))
-#define SNIPE_LAYER (DT_PROP(DT_DRV_INST(0), snipe_layers))
 #if AUTOMOUSE_LAYER > 0
 struct k_timer automouse_layer_timer;
 static bool automouse_triggered = false;
@@ -563,15 +561,19 @@ static void deactivate_automouse_layer(struct k_timer *timer) {
 K_TIMER_DEFINE(automouse_layer_timer, deactivate_automouse_layer, NULL);
 #endif
 
-static enum pixart_input_mode get_input_mode_for_current_layer() {
+static enum pixart_input_mode get_input_mode_for_current_layer(const struct device *dev) {
+    const struct pixart_config *config = dev->config;
     uint8_t curr_layer = zmk_keymap_highest_layer_active();
-    if (curr_layer == SCROLL_LAYER) {
+    for (size_t i = 0; i < config->scroll_layers_len; i++) {
+        if (curr_layer == config->scroll_layers[i]) {
             return SCROLL;
         }
-    if (curr_layer == SNIPE_LAYER) {
+    }
+    for (size_t i = 0; i < config->snipe_layers_len; i++) {
+        if (curr_layer == config->snipe_layers[i]) {
             return SNIPE;
         }
-
+    }
     return MOVE;
 }
 
@@ -585,7 +587,7 @@ static int pmw3610_report_data(const struct device *dev) {
     }
 
     int32_t dividor;
-    enum pixart_input_mode input_mode = get_input_mode_for_current_layer();
+    enum pixart_input_mode input_mode = get_input_mode_for_current_layer(dev);
     bool input_mode_changed = data->curr_mode != input_mode;
     switch (input_mode) {
     case MOVE:
@@ -611,7 +613,7 @@ static int pmw3610_report_data(const struct device *dev) {
     data->curr_mode = input_mode;
 
 #if AUTOMOUSE_LAYER > 0
-    if (input_mode == MOVE && zmk_keymap_highest_layer_active() != SNIPE_LAYER && zmk_keymap_highest_layer_active() != SCROLL_LAYER
+    if (input_mode == MOVE &&
             (automouse_triggered || zmk_keymap_highest_layer_active() != AUTOMOUSE_LAYER)
     ) {
         activate_automouse_layer();
@@ -810,7 +812,9 @@ static int pmw3610_init(const struct device *dev) {
 }
 
 #define PMW3610_DEFINE(n)                                                                          \
-    static struct pixart_data data##n;                                                             \                     \
+    static struct pixart_data data##n;                                                             \
+    static int32_t scroll_layers##n[] = DT_PROP(DT_DRV_INST(n), scroll_layers);                    \
+    static int32_t snipe_layers##n[] = DT_PROP(DT_DRV_INST(n), snipe_layers);                      \
     static const struct pixart_config config##n = {                                                \
         .irq_gpio = GPIO_DT_SPEC_INST_GET(n, irq_gpios),                                           \
         .bus =                                                                                     \
@@ -824,7 +828,11 @@ static int pmw3610_init(const struct device *dev) {
                         .slave = DT_INST_REG_ADDR(n),                                              \
                     },                                                                             \
             },                                                                                     \
-        .cs_gpio = SPI_CS_GPIOS_DT_SPEC_GET(DT_DRV_INST(n)),                                       \                          \
+        .cs_gpio = SPI_CS_GPIOS_DT_SPEC_GET(DT_DRV_INST(n)),                                       \
+        .scroll_layers = scroll_layers##n,                                                         \
+        .scroll_layers_len = DT_PROP_LEN(DT_DRV_INST(n), scroll_layers),                           \
+        .snipe_layers = snipe_layers##n,                                                           \
+        .snipe_layers_len = DT_PROP_LEN(DT_DRV_INST(n), snipe_layers),                             \
     };                                                                                             \
                                                                                                    \
     DEVICE_DT_INST_DEFINE(n, pmw3610_init, NULL, &data##n, &config##n, POST_KERNEL,                \
