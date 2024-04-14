@@ -572,9 +572,7 @@ static int keycode_state_changed_listener(const zmk_event_t *eh) {
 }
 
 int behavior_move_listener(const zmk_event_t *eh) {
-    if (as_zmk_position_state_changed(eh) != NULL) {
-        return position_state_changed_listener(eh);
-    } else if (as_zmk_keycode_state_changed(eh) != NULL) {
+    if (as_zmk_keycode_state_changed(eh) != NULL) {
         return keycode_state_changed_listener(eh);
     }
     return ZMK_EV_EVENT_BUBBLE;
