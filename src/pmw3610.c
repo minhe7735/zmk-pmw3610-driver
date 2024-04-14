@@ -549,7 +549,7 @@ struct k_timer automouse_layer_timer;
 static bool automouse_triggered = false;
 
 // this keeps track of the last non-cmove, non-mod key tap
-int64_t last_tapped_timestamp = INT32_MIN;
+extern int64_t last_tapped_timestamp;
 // this keeps track of the last time a move was pressed
 int64_t last_move_timestamp = INT32_MIN;
 
