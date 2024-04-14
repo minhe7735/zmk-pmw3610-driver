@@ -579,7 +579,6 @@ int behavior_move_listener(const zmk_event_t *eh) {
 }
 
 ZMK_LISTENER(pmw3610, behavior_move_listener);
-ZMK_SUBSCRIPTION(pmw3610, zmk_position_state_changed);
 ZMK_SUBSCRIPTION(pmw3610, zmk_keycode_state_changed);
 
 static void activate_automouse_layer() {
