@@ -548,6 +548,42 @@ static void pmw3610_async_init(struct k_work *work) {
 struct k_timer automouse_layer_timer;
 static bool automouse_triggered = false;
 
+// this keeps track of the last non-cmove, non-mod key tap
+int64_t last_tapped_timestamp = INT32_MIN;
+// this keeps track of the last time a move was pressed
+int64_t last_move_timestamp = INT32_MIN;
+
+static void store_last_tapped(int64_t timestamp) {
+    if (timestamp > last_move_timestamp) {
+        last_tapped_timestamp = timestamp;
+    }
+}
+
+static bool is_quick_tap(pixart_config *config, int64_t timestamp) {
+    return (last_tapped_timestamp + config->require_prior_idle_ms) > timestamp;
+}
+
+static int keycode_state_changed_listener(const zmk_event_t *eh) {
+    struct zmk_keycode_state_changed *ev = as_zmk_keycode_state_changed(eh);
+    if (ev->state && !is_mod(ev->usage_page, ev->keycode)) {
+        store_last_tapped(ev->timestamp);
+    }
+    return ZMK_EV_EVENT_BUBBLE;
+}
+
+int behavior_move_listener(const zmk_event_t *eh) {
+    if (as_zmk_position_state_changed(eh) != NULL) {
+        return position_state_changed_listener(eh);
+    } else if (as_zmk_keycode_state_changed(eh) != NULL) {
+        return keycode_state_changed_listener(eh);
+    }
+    return ZMK_EV_EVENT_BUBBLE;
+}
+
+ZMK_LISTENER(pmw3610, behavior_move_listener);
+ZMK_SUBSCRIPTION(pmw3610, zmk_position_state_changed);
+ZMK_SUBSCRIPTION(pmw3610, zmk_keycode_state_changed);
+
 static void activate_automouse_layer() {
     automouse_triggered = true;
     zmk_keymap_layer_activate(AUTOMOUSE_LAYER);
@@ -583,42 +619,6 @@ static int pmw3610_report_data(const struct device *dev) {
     const struct pixart_config *config = dev->config;
     uint8_t buf[PMW3610_BURST_SIZE];
 
-    // this keeps track of the last non-cmove, non-mod key tap
-    int64_t last_tapped_timestamp = INT32_MIN;
-    // this keeps track of the last time a move was pressed
-    int64_t last_move_timestamp = INT32_MIN;
-
-    static void store_last_tapped(int64_t timestamp) {
-        if (timestamp > last_move_timestamp) {
-            last_tapped_timestamp = timestamp;
-        }
-    }
-
-    static bool is_quick_tap(int64_t timestamp) {
-        return (last_tapped_timestamp + config->require_prior_idle_ms) > timestamp;
-    }
-
-    static int keycode_state_changed_listener(const zmk_event_t *eh) {
-        struct zmk_keycode_state_changed *ev = as_zmk_keycode_state_changed(eh);
-        if (ev->state && !is_mod(ev->usage_page, ev->keycode)) {
-            store_last_tapped(ev->timestamp);
-        }
-        return ZMK_EV_EVENT_BUBBLE;
-    }
-
-    int behavior_move_listener(const zmk_event_t *eh) {
-        if (as_zmk_position_state_changed(eh) != NULL) {
-            return position_state_changed_listener(eh);
-        } else if (as_zmk_keycode_state_changed(eh) != NULL) {
-            return keycode_state_changed_listener(eh);
-        }
-        return ZMK_EV_EVENT_BUBBLE;
-    }
-
-    ZMK_LISTENER(pmw3610, behavior_move_listener);
-    ZMK_SUBSCRIPTION(pmw3610, zmk_position_state_changed);
-    ZMK_SUBSCRIPTION(pmw3610, zmk_keycode_state_changed);
-
     if (unlikely(!data->ready)) {
         LOG_WRN("Device is not initialized yet");
         return -EBUSY;
@@ -651,7 +651,7 @@ static int pmw3610_report_data(const struct device *dev) {
     data->curr_mode = input_mode;
 
 #if AUTOMOUSE_LAYER > 0
-    if (input_mode == MOVE && !is_quick_tap(timestamp)
+    if (input_mode == MOVE && !is_quick_tap(config, timestamp)
             (automouse_triggered || zmk_keymap_highest_layer_active() != AUTOMOUSE_LAYER)
     ) {
         activate_automouse_layer();
