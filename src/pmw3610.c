@@ -651,7 +651,7 @@ static int pmw3610_report_data(const struct device *dev) {
     data->curr_mode = input_mode;
 
 #if AUTOMOUSE_LAYER > 0
-    if (input_mode == MOVE && !is_quick_tap(config, timestamp)
+    if (input_mode == MOVE && !is_quick_tap(config, data->last_poll_time)
             (automouse_triggered || zmk_keymap_highest_layer_active() != AUTOMOUSE_LAYER)
     ) {
         activate_automouse_layer();
@@ -728,7 +728,7 @@ static int pmw3610_report_data(const struct device *dev) {
 
     if (x != 0 || y != 0) {
         if (input_mode != SCROLL) {
-            last_move_timestamp = timestamp;
+            last_move_timestamp = data->last_poll_time;
             input_report_rel(dev, INPUT_REL_X, x, false, K_FOREVER);
             input_report_rel(dev, INPUT_REL_Y, y, true, K_FOREVER);
         } else {
