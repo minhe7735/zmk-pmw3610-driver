@@ -870,7 +870,7 @@ static int pmw3610_init(const struct device *dev) {
         .scroll_layers_len = DT_PROP_LEN(DT_DRV_INST(n), scroll_layers),                           \
         .snipe_layers = snipe_layers##n,                                                           \
         .snipe_layers_len = DT_PROP_LEN(DT_DRV_INST(n), snipe_layers),                             \
-        .require_prior_idle_ms = DT_PROP(n, require_prior_idle_ms),                                \
+        .require_prior_idle_ms = DT_PROP(DT_DRV_INST(0), require_prior_idle_ms),                                \
     };                                                                                             \
                                                                                                    \
     DEVICE_DT_INST_DEFINE(n, pmw3610_init, NULL, &data##n, &config##n, POST_KERNEL,                \
