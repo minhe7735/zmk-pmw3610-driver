@@ -648,8 +648,8 @@ static int pmw3610_report_data(const struct device *dev) {
     data->curr_mode = input_mode;
 
 #if AUTOMOUSE_LAYER > 0
-    if (input_mode == MOVE && !is_quick_tap(config, data->last_poll_time) &&
-            (automouse_triggered || zmk_keymap_highest_layer_active() != AUTOMOUSE_LAYER)
+    if (input_mode == MOVE &&
+            (automouse_triggered || (zmk_keymap_highest_layer_active() != AUTOMOUSE_LAYER && !is_quick_tap(config, data->last_poll_time)))
     ) {
         activate_automouse_layer();
     }
