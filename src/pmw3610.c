@@ -13,6 +13,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/input/input.h>
+#include <zmk/events/keycode_state_changed.h>
 #include <zmk/keymap.h>
 #include "pmw3610.h"
 
@@ -579,7 +580,44 @@ static enum pixart_input_mode get_input_mode_for_current_layer(const struct devi
 
 static int pmw3610_report_data(const struct device *dev) {
     struct pixart_data *data = dev->data;
+    const struct pixart_config *config = dev->config;
     uint8_t buf[PMW3610_BURST_SIZE];
+
+    // this keeps track of the last non-cmove, non-mod key tap
+    int64_t last_tapped_timestamp = INT32_MIN;
+    // this keeps track of the last time a move was pressed
+    int64_t last_move_timestamp = INT32_MIN;
+
+    static void store_last_tapped(int64_t timestamp) {
+        if (timestamp > last_move_timestamp) {
+            last_tapped_timestamp = timestamp;
+        }
+    }
+
+    static bool is_quick_tap(int64_t timestamp) {
+        return (last_tapped_timestamp + config->require_prior_idle_ms) > timestamp;
+    }
+
+    static int keycode_state_changed_listener(const zmk_event_t *eh) {
+        struct zmk_keycode_state_changed *ev = as_zmk_keycode_state_changed(eh);
+        if (ev->state && !is_mod(ev->usage_page, ev->keycode)) {
+            store_last_tapped(ev->timestamp);
+        }
+        return ZMK_EV_EVENT_BUBBLE;
+    }
+
+    int behavior_move_listener(const zmk_event_t *eh) {
+        if (as_zmk_position_state_changed(eh) != NULL) {
+            return position_state_changed_listener(eh);
+        } else if (as_zmk_keycode_state_changed(eh) != NULL) {
+            return keycode_state_changed_listener(eh);
+        }
+        return ZMK_EV_EVENT_BUBBLE;
+    }
+
+    ZMK_LISTENER(pmw3610, behavior_move_listener);
+    ZMK_SUBSCRIPTION(pmw3610, zmk_position_state_changed);
+    ZMK_SUBSCRIPTION(pmw3610, zmk_keycode_state_changed);
 
     if (unlikely(!data->ready)) {
         LOG_WRN("Device is not initialized yet");
@@ -613,7 +651,7 @@ static int pmw3610_report_data(const struct device *dev) {
     data->curr_mode = input_mode;
 
 #if AUTOMOUSE_LAYER > 0
-    if (input_mode == MOVE &&
+    if (input_mode == MOVE && !is_quick_tap(timestamp)
             (automouse_triggered || zmk_keymap_highest_layer_active() != AUTOMOUSE_LAYER)
     ) {
         activate_automouse_layer();
@@ -687,8 +725,10 @@ static int pmw3610_report_data(const struct device *dev) {
     }
 #endif
 
+
     if (x != 0 || y != 0) {
         if (input_mode != SCROLL) {
+            last_move_timestamp = timestamp;
             input_report_rel(dev, INPUT_REL_X, x, false, K_FOREVER);
             input_report_rel(dev, INPUT_REL_Y, y, true, K_FOREVER);
         } else {
@@ -817,6 +857,7 @@ static int pmw3610_init(const struct device *dev) {
     static int32_t snipe_layers##n[] = DT_PROP(DT_DRV_INST(n), snipe_layers);                      \
     static const struct pixart_config config##n = {                                                \
         .irq_gpio = GPIO_DT_SPEC_INST_GET(n, irq_gpios),                                           \
+        .require_prior_idle_ms = DT_PROP(n, require_prior_idle_ms),                                \
         .bus =                                                                                     \
             {                                                                                      \
                 .bus = DEVICE_DT_GET(DT_INST_BUS(n)),                                              \

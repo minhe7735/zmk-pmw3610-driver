@@ -59,6 +59,7 @@ struct pixart_config {
     int32_t *scroll_layers;
     size_t snipe_layers_len;
     int32_t *snipe_layers;
+    int32_t require_prior_idle_ms;
 };
 
 #ifdef __cplusplus
