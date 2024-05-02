@@ -546,6 +546,7 @@ static void pmw3610_async_init(struct k_work *work) {
 #define AUTOMOUSE_LAYER (DT_PROP(DT_DRV_INST(0), automouse_layer))
 #if AUTOMOUSE_LAYER > 0
 #define IDLE_MS DT_PROP(DT_DRV_INST(0), require_prior_idle_ms)
+#if IDLE_MS > 0
 struct k_timer automouse_layer_timer;
 static bool automouse_triggered = false;
 
@@ -581,7 +582,7 @@ int behavior_move_listener(const zmk_event_t *eh) {
 
 ZMK_LISTENER(pmw3610, behavior_move_listener);
 ZMK_SUBSCRIPTION(pmw3610, zmk_keycode_state_changed);
-
+#endif
 static void activate_automouse_layer() {
     automouse_triggered = true;
     zmk_keymap_layer_activate(AUTOMOUSE_LAYER);
