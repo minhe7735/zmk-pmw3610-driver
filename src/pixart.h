@@ -26,8 +26,11 @@ struct pixart_data {
     int32_t scroll_delta_x;
     int32_t scroll_delta_y;
 
-#ifdef CONFIG_PMW3610_POLLING_RATE_125_SW
+#ifdef CONFIG_PMW3610_POLLING_RATE_125_SW || (DT_PROP(DT_DRV_INST(0), automouse_layer) > 1 && DT_PROP(DT_DRV_INST(0), require_prior_idle_ms) > 0)
     int64_t last_poll_time;
+#endif
+
+#ifdef CONFIG_PMW3610_POLLING_RATE_125_SW
     int16_t last_x;
     int16_t last_y;
 #endif

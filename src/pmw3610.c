@@ -545,10 +545,11 @@ static void pmw3610_async_init(struct k_work *work) {
 
 #define AUTOMOUSE_LAYER (DT_PROP(DT_DRV_INST(0), automouse_layer))
 #if AUTOMOUSE_LAYER > 0
+#define IDLE_MS config->require_prior_idle_ms
 struct k_timer automouse_layer_timer;
 static bool automouse_triggered = false;
 
-// this keeps track of the last non-cmove, non-mod key tap
+// this keeps track of the last non-move, non-mod key tap
 extern int64_t last_tapped_timestamp;
 // this keeps track of the last time a move was pressed
 int64_t last_move_timestamp = INT32_MIN;
@@ -706,26 +707,32 @@ static int pmw3610_report_data(const struct device *dev) {
     }
 #endif
 
-#ifdef CONFIG_PMW3610_POLLING_RATE_125_SW
+#ifdef CONFIG_PMW3610_POLLING_RATE_125_SW || (AUTOMOUSE_LAYER > 0 && IDLE_MS > 0)
     int64_t curr_time = k_uptime_get();
     if (data->last_poll_time == 0 || curr_time - data->last_poll_time > 128) {
         data->last_poll_time = curr_time;
+#ifdef CONFIG_PMW3610_POLLING_RATE_125_SW
         data->last_x = x;
         data->last_y = y;
+#endif
         return 0;
     } else {
+#ifdef CONFIG_PMW3610_POLLING_RATE_125_SW
         x += data->last_x;
         y += data->last_y;
-        data->last_poll_time = 0;
         data->last_x = 0;
         data->last_y = 0;
+#endif
+        data->last_poll_time = 0;
     }
 #endif
 
 
     if (x != 0 || y != 0) {
         if (input_mode != SCROLL) {
+#if AUTOMOUSE_LAYER > 0 && IDLE_MS > 0
             last_move_timestamp = data->last_poll_time;
+#endif
             input_report_rel(dev, INPUT_REL_X, x, false, K_FOREVER);
             input_report_rel(dev, INPUT_REL_Y, y, true, K_FOREVER);
         } else {
