@@ -545,7 +545,7 @@ static void pmw3610_async_init(struct k_work *work) {
 
 #define AUTOMOUSE_LAYER (DT_PROP(DT_DRV_INST(0), automouse_layer))
 #if AUTOMOUSE_LAYER > 0
-#define IDLE_MS config->require_prior_idle_ms
+#define IDLE_MS DT_PROP(DT_DRV_INST(0), require_prior_idle_ms)
 struct k_timer automouse_layer_timer;
 static bool automouse_triggered = false;
 
@@ -707,7 +707,7 @@ static int pmw3610_report_data(const struct device *dev) {
     }
 #endif
 
-#ifdef CONFIG_PMW3610_POLLING_RATE_125_SW || (AUTOMOUSE_LAYER > 0 && IDLE_MS > 0)
+#if defined(CONFIG_PMW3610_POLLING_RATE_125_SW) || (AUTOMOUSE_LAYER > 0 && IDLE_MS > 0)
     int64_t curr_time = k_uptime_get();
     if (data->last_poll_time == 0 || curr_time - data->last_poll_time > 128) {
         data->last_poll_time = curr_time;
